@@ -58,7 +58,7 @@ pub fn get_delta_amount_a_unsigned_unchecked(
 
     let denominator = U256::from(lower_sqrt_price).safe_mul(U256::from(upper_sqrt_price))?;
 
-    assert!(denominator > U256::ZERO);
+    require!(denominator > U256::ZERO, PoolError::InvalidPriceRange);
     let result = mul_div_u256(numerator_1, numerator_2, denominator, round)
         .ok_or_else(|| PoolError::MathOverflow)?;
     return Ok(result);
@@ -114,8 +114,8 @@ pub fn get_next_sqrt_price_from_input(
     amount_in: u64,
     a_for_b: bool,
 ) -> Result<u128> {
-    assert!(sqrt_price > 0);
-    assert!(liquidity > 0);
+    require!(sqrt_price > 0, PoolError::InvalidPriceRange);
+    require!(liquidity > 0, PoolError::InsufficientLiquidity);
 
     // round to make sure that we don't pass the target price
     if a_for_b {
@@ -133,8 +133,8 @@ pub fn get_next_sqrt_price_from_output(
     amount_out: u64,
     a_for_b: bool,
 ) -> Result<u128> {
-    assert!(sqrt_price > 0);
-    assert!(liquidity > 0);
+    require!(sqrt_price > 0, PoolError::InvalidPriceRange);
+    require!(liquidity > 0, PoolError::InsufficientLiquidity);
 
     // round to make sure that we don't pass the target price
     if a_for_b {
