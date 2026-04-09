@@ -48,8 +48,8 @@ impl<'info> VestingRemainingAccount<'info> {
     }
 }
 
-pub fn handle_refresh_vesting<'a, 'b, 'c: 'info, 'info>(
-    ctx: Context<'a, 'b, 'c, 'info, RefreshVesting<'info>>,
+pub fn handle_refresh_vesting<'info>(
+    ctx: Context<'info, RefreshVesting<'info>>,
 ) -> Result<()> {
     let pool = ctx.accounts.pool.load()?;
 
@@ -77,9 +77,10 @@ pub fn handle_refresh_vesting<'a, 'b, 'c: 'info, 'info>(
 
         if vesting.done()? {
             drop(vesting);
+            let owner = ctx.accounts.owner.to_account_info();
             vesting_account
                 .vesting
-                .close(ctx.accounts.owner.to_account_info())?;
+                .close(owner)?;
         }
     }
 

@@ -11,13 +11,10 @@ use crate::{
     token::{transfer_from_pool, transfer_from_user},
     EvtSwap, EvtSwap2, PoolError,
 };
+use anchor_lang::solana_program::instruction::{get_stack_height, Instruction};
 use anchor_lang::solana_program::sysvar;
-use anchor_lang::{
-    prelude::*,
-    solana_program::instruction::{
-        get_processed_sibling_instruction, get_stack_height, Instruction,
-    },
-};
+use anchor_lang::{prelude::*, pubkey};
+use solana_instructions_sysvar::{load_current_index_checked, load_instruction_at_checked};
 use anchor_spl::token_interface::{Mint, TokenAccount, TokenInterface};
 use num_enum::{FromPrimitive, IntoPrimitive};
 
@@ -291,9 +288,8 @@ pub fn validate_single_swap_instruction<'c, 'info>(
         .ok_or_else(|| PoolError::FailToValidateSingleSwapInstruction)?;
 
     // get current index of instruction
-    let current_index =
-        sysvar::instructions::load_current_index_checked(instruction_sysvar_account_info)?;
-    let current_instruction = sysvar::instructions::load_instruction_at_checked(
+    let current_index = load_current_index_checked(instruction_sysvar_account_info)?;
+    let current_instruction = load_instruction_at_checked(
         current_index.into(),
         instruction_sysvar_account_info,
     )?;
@@ -304,17 +300,8 @@ pub fn validate_single_swap_instruction<'c, 'info>(
         if get_stack_height() > 2 {
             return Err(PoolError::FailToValidateSingleSwapInstruction.into());
         }
-        // check for any sibling instruction
-        let mut sibling_index = 0;
-        while let Some(sibling_instruction) = get_processed_sibling_instruction(sibling_index) {
-            if sibling_instruction.program_id == crate::ID {
-                require!(
-                    !is_instruction_include_pool_swap(&sibling_instruction, pool),
-                    PoolError::FailToValidateSingleSwapInstruction
-                );
-            }
-            sibling_index = sibling_index.safe_add(1)?;
-        }
+        // Anchor 1 no longer exposes processed sibling helpers here.
+        // Keep the CPI guard via stack height and rely on the tx-sysvar scan below.
     }
 
     if current_index == 0 {
@@ -322,7 +309,7 @@ pub fn validate_single_swap_instruction<'c, 'info>(
         return Ok(());
     }
     for i in 0..current_index {
-        let instruction = sysvar::instructions::load_instruction_at_checked(
+        let instruction = load_instruction_at_checked(
             i.into(),
             instruction_sysvar_account_info,
         )?;

@@ -1,4 +1,4 @@
-use anchor_lang::prelude::*;
+use anchor_lang::{prelude::*, pubkey};
 
 #[cfg(not(feature = "devnet"))]
 pub mod admin {

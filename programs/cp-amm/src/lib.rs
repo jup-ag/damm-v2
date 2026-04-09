@@ -70,8 +70,8 @@ pub mod cp_amm {
         instructions::handle_close_config(ctx)
     }
 
-    pub fn initialize_reward<'c: 'info, 'info>(
-        ctx: Context<'_, '_, 'c, 'info, InitializeRewardCtx<'info>>,
+    pub fn initialize_reward(
+        ctx: Context<InitializeRewardCtx>,
         reward_index: u8,
         reward_duration: u64,
         funder: Pubkey,
@@ -137,22 +137,22 @@ pub mod cp_amm {
 
     /// USER FUNCTIONS ////
 
-    pub fn initialize_pool<'c: 'info, 'info>(
-        ctx: Context<'_, '_, 'c, 'info, InitializePoolCtx<'info>>,
+    pub fn initialize_pool(
+        ctx: Context<InitializePoolCtx>,
         params: InitializePoolParameters,
     ) -> Result<()> {
         instructions::handle_initialize_pool(ctx, params)
     }
 
-    pub fn initialize_pool_with_dynamic_config<'c: 'info, 'info>(
-        ctx: Context<'_, '_, 'c, 'info, InitializePoolWithDynamicConfigCtx<'info>>,
+    pub fn initialize_pool_with_dynamic_config(
+        ctx: Context<InitializePoolWithDynamicConfigCtx>,
         params: InitializeCustomizablePoolParameters,
     ) -> Result<()> {
         instructions::handle_initialize_pool_with_dynamic_config(ctx, params)
     }
 
-    pub fn initialize_customizable_pool<'c: 'info, 'info>(
-        ctx: Context<'_, '_, 'c, 'info, InitializeCustomizablePoolCtx<'info>>,
+    pub fn initialize_customizable_pool(
+        ctx: Context<InitializeCustomizablePoolCtx>,
         params: InitializeCustomizablePoolParameters,
     ) -> Result<()> {
         instructions::handle_initialize_customizable_pool(ctx, params)
@@ -221,8 +221,8 @@ pub mod cp_amm {
         instructions::handle_lock_position(ctx, params)
     }
 
-    pub fn refresh_vesting<'a, 'b, 'c: 'info, 'info>(
-        ctx: Context<'a, 'b, 'c, 'info, RefreshVesting<'info>>,
+    pub fn refresh_vesting<'info>(
+        ctx: Context<'info, RefreshVesting<'info>>,
     ) -> Result<()> {
         instructions::handle_refresh_vesting(ctx)
     }

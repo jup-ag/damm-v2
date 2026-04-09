@@ -11,4 +11,4 @@ cp-amm = { path = "../programs/cp-amm" }
 ruint = "1.3.0"
 
 [dev-dependencies]
-bytemuck = { workspace = true}
+bytemuck = { workspace = true }
