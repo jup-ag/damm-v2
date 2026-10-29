@@ -1,6 +1,6 @@
 [package]
 name = "cp-amm"
-version = "0.1.0"
+version = "0.2.3"
 description = "Created with Anchor"
 edition = "2021"
 
@@ -9,27 +9,37 @@ crate-type = ["cdylib", "lib"]
 name = "cp_amm"
 
 [features]
+no-custom-entrypoint = []
 no-entrypoint = []
 no-idl = []
 no-log-ix-name = []
-cpi = ["no-entrypoint"]
-default = []
+cpi = ["no-entrypoint", "no-custom-entrypoint"]
+default = ["no-entrypoint"]
 local = []
 idl-build = ["anchor-lang/idl-build", "anchor-spl/idl-build"]
-devnet = []
+custom-heap = []
+custom-panic = []
+anchor-debug = []
 
 [dependencies]
-anchor-lang = { workspace = true, features = ["event-cpi", "init-if-needed"] }
+anchor-lang = { workspace = true, features = ["event-cpi"] }
 anchor-spl = { workspace = true, features = [] }
 bytemuck = { workspace = true, features = ["derive", "min_const_generics"] }
-static_assertions = "1.1.0"
-ruint = "1.3.0"
-num-traits = "0.2.19"
-num_enum = "0.7.0"
-num = "0.4.3"
-spl-token-metadata-interface = { version = "0.8.0" }
-const-crypto = "0.3.0"
-solana-instructions-sysvar = "4.0.0"
+static_assertions = { workspace = true }
+ruint = { workspace = true }
+num-traits = { workspace = true }
+num_enum = { workspace = true }
+num = { workspace = true }
+solana-instruction = { workspace = true }
+borsh = { workspace = true }
+const-crypto = { workspace = true }
+pinocchio = { workspace = true }
+pinocchio-token = { workspace = true }
+pinocchio-token-2022 = { workspace = true }
+derive-variant-count = { workspace = true }
+
+[lints]
+workspace = true
 
 [dev-dependencies]
-proptest = "1.2.0"
+proptest = { workspace = true }

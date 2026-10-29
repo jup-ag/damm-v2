@@ -10,7 +10,7 @@ use crate::{
 };
 
 #[derive(Accounts)]
-pub struct RefreshVesting<'info> {
+pub struct RefreshVestingCtx<'info> {
     pub pool: AccountLoader<'info, Pool>,
 
     #[account(
@@ -48,15 +48,15 @@ impl<'info> VestingRemainingAccount<'info> {
     }
 }
 
-pub fn handle_refresh_vesting<'info>(
-    ctx: Context<'info, RefreshVesting<'info>>,
-) -> Result<()> {
+pub fn handle_refresh_vesting<'info>(ctx: Context<'info, RefreshVestingCtx<'info>>) -> Result<()> {
     let pool = ctx.accounts.pool.load()?;
 
     let (current_point, _) =
         ActivationHandler::get_current_point_and_buffer_duration(pool.activation_type)?;
 
-    let mut position: RefMut<'_, Position> = ctx.accounts.position.load_mut()?;
+    let mut position = ctx.accounts.position.load_mut()?;
+    position.refresh_inner_vesting(current_point)?;
+
     let mut remaining_accounts = &ctx.remaining_accounts[..];
 
     loop {
@@ -75,27 +75,30 @@ pub fn handle_refresh_vesting<'info>(
         let mut vesting = vesting_account.load_and_validate(ctx.accounts.position.key())?;
         release_vesting_liquidity_to_position(&mut vesting, &mut position, current_point)?;
 
-        if vesting.done()? {
+        if vesting.inner_vesting.done()? {
             drop(vesting);
-            let owner = ctx.accounts.owner.to_account_info();
             vesting_account
                 .vesting
-                .close(owner)?;
+                .close(ctx.accounts.owner.to_account_info())?;
         }
     }
 
     Ok(())
 }
 
-fn release_vesting_liquidity_to_position(
-    vesting: &mut RefMut<'_, Vesting>,
-    position: &mut RefMut<'_, Position>,
+pub fn release_vesting_liquidity_to_position(
+    vesting: &mut Vesting,
+    position: &mut Position,
     current_point: u64,
 ) -> Result<()> {
-    let released_liquidity = vesting.get_new_release_liquidity(current_point)?;
+    let released_liquidity = vesting
+        .inner_vesting
+        .get_new_release_liquidity(current_point)?;
     if released_liquidity > 0 {
         position.release_vested_liquidity(released_liquidity)?;
-        vesting.accumulate_released_liquidity(released_liquidity)?;
+        vesting
+            .inner_vesting
+            .accumulate_released_liquidity(released_liquidity)?;
     }
 
     Ok(())

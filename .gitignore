@@ -8,3 +8,8 @@ test-ledger
 .yarn
 proptest-regressions
 commands
+deploy.sh
+
+.notes
+.claude
+bun.lockb

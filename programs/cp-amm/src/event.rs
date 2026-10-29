@@ -3,13 +3,13 @@ use anchor_lang::prelude::*;
 
 use crate::{
     params::fee_parameters::PoolFeeParameters,
-    state::{SplitAmountInfo, SplitPositionInfo, SwapResult, SwapResult2},
-    AddLiquidityParameters, RemoveLiquidityParameters, SplitPositionParameters2, SwapParameters,
-    SwapParameters2,
+    state::{
+        SplitAmountInfo, SplitAmountInfo2, SplitPositionInfo, SplitPositionInfo2, SwapResult2,
+    },
+    SplitPositionParameters2, SplitPositionParameters3, SwapParameters2, UpdatePoolFeesParameters,
 };
 
 /// Close config
-#[derive(Debug)]
 #[event]
 pub struct EvtCloseConfig {
     /// Config pubkey
@@ -19,7 +19,6 @@ pub struct EvtCloseConfig {
 }
 
 /// Create static config
-#[derive(Debug)]
 #[event]
 pub struct EvtCreateConfig {
     pub pool_fees: PoolFeeParameters,
@@ -42,28 +41,11 @@ pub struct EvtCreateDynamicConfig {
 }
 
 /// Create token badge
-#[derive(Debug)]
 #[event]
 pub struct EvtCreateTokenBadge {
     pub token_mint: Pubkey,
 }
 
-/// Create claim fee operator
-#[derive(Debug)]
-#[event]
-pub struct EvtCreateClaimFeeOperator {
-    pub operator: Pubkey,
-}
-
-/// Close claim fee operator
-#[derive(Debug)]
-#[event]
-pub struct EvtCloseClaimFeeOperator {
-    pub claim_fee_operator: Pubkey,
-    pub operator: Pubkey,
-}
-
-#[derive(Debug)]
 #[event]
 pub struct EvtInitializePool {
     pub pool: Pubkey,
@@ -89,21 +71,6 @@ pub struct EvtInitializePool {
     pub pool_type: u8,
 }
 
-#[deprecated = "Please migrate to EvtLiquidityChange instead. This event will be removed in the future."]
-#[derive(Debug)]
-#[event]
-pub struct EvtAddLiquidity {
-    pub pool: Pubkey,
-    pub position: Pubkey,
-    pub owner: Pubkey,
-    pub params: AddLiquidityParameters,
-    pub token_a_amount: u64,
-    pub token_b_amount: u64,
-    pub total_amount_a: u64,
-    pub total_amount_b: u64,
-}
-
-#[derive(Debug)]
 #[event]
 pub struct EvtClaimPositionFee {
     pub pool: Pubkey,
@@ -113,7 +80,6 @@ pub struct EvtClaimPositionFee {
     pub fee_b_claimed: u64,
 }
 
-#[derive(Debug)]
 #[event]
 pub struct EvtCreatePosition {
     pub pool: Pubkey,
@@ -122,7 +88,6 @@ pub struct EvtCreatePosition {
     pub position_nft_mint: Pubkey,
 }
 
-#[derive(Debug)]
 #[event]
 pub struct EvtClosePosition {
     pub pool: Pubkey,
@@ -131,31 +96,15 @@ pub struct EvtClosePosition {
     pub position_nft_mint: Pubkey,
 }
 
-#[deprecated = "Please migrate to EvtLiquidityChange instead. This event will be removed in the future."]
 #[event]
-pub struct EvtRemoveLiquidity {
-    pub pool: Pubkey,
+pub struct EvtUpdateDelegatePermission {
     pub position: Pubkey,
     pub owner: Pubkey,
-    pub params: RemoveLiquidityParameters,
-    pub token_a_amount: u64,
-    pub token_b_amount: u64,
+    pub permission: u32,
+    pub delegate: Option<Pubkey>,
 }
 
-#[deprecated = "Please migrate to EvtSwap2 instead. This event will be removed in the future."]
-#[derive(Debug)]
-#[event]
-pub struct EvtSwap {
-    pub pool: Pubkey,
-    pub trade_direction: u8,
-    pub has_referral: bool,
-    pub params: SwapParameters,
-    pub swap_result: SwapResult,
-    pub actual_amount_in: u64,
-    pub current_timestamp: u64,
-}
-
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy)]
 #[event]
 pub struct EvtSwap2 {
     pub pool: Pubkey,
@@ -163,7 +112,6 @@ pub struct EvtSwap2 {
     pub collect_fee_mode: u8,
     pub has_referral: bool,
     pub params: SwapParameters2,
-    // excluded_transfer_fee_amount_in is swap_result.included_fee_amount_in
     pub swap_result: SwapResult2,
     pub included_transfer_fee_amount_in: u64,
     pub included_transfer_fee_amount_out: u64,
@@ -173,7 +121,6 @@ pub struct EvtSwap2 {
     pub reserve_b_amount: u64,
 }
 
-#[derive(Debug)]
 #[event]
 pub struct EvtLockPosition {
     pub pool: Pubkey,
@@ -186,7 +133,6 @@ pub struct EvtLockPosition {
     pub liquidity_per_period: u128,
     pub number_of_period: u16,
 }
-#[derive(Debug)]
 #[event]
 pub struct EvtPermanentLockPosition {
     pub pool: Pubkey,
@@ -195,23 +141,14 @@ pub struct EvtPermanentLockPosition {
     pub total_permanent_locked_liquidity: u128,
 }
 
-#[derive(Debug)]
 #[event]
-pub struct EvtClaimProtocolFee {
+pub struct EvtClaimProtocolFee2 {
     pub pool: Pubkey,
-    pub token_a_amount: u64,
-    pub token_b_amount: u64,
+    pub receiver_token_account: Pubkey,
+    pub token_mint: Pubkey,
+    pub amount: u64,
 }
 
-#[derive(Debug)]
-#[event]
-pub struct EvtClaimPartnerFee {
-    pub pool: Pubkey,
-    pub token_a_amount: u64,
-    pub token_b_amount: u64,
-}
-
-#[derive(Debug)]
 #[event]
 pub struct EvtSetPoolStatus {
     pub pool: Pubkey,
@@ -219,7 +156,6 @@ pub struct EvtSetPoolStatus {
 }
 
 // Initialize reward
-#[derive(Debug)]
 #[event]
 pub struct EvtInitializeReward {
     // Liquidity pool
@@ -236,7 +172,6 @@ pub struct EvtInitializeReward {
     pub reward_duration: u64,
 }
 
-#[derive(Debug)]
 #[event]
 pub struct EvtFundReward {
     // Liquidity pool
@@ -259,7 +194,6 @@ pub struct EvtFundReward {
     pub post_reward_rate: u128,
 }
 
-#[derive(Debug)]
 #[event]
 pub struct EvtClaimReward {
     // Liquidity pool
@@ -276,7 +210,6 @@ pub struct EvtClaimReward {
     pub total_reward: u64,
 }
 
-#[derive(Debug)]
 #[event]
 pub struct EvtUpdateRewardDuration {
     // Liquidity pool
@@ -289,7 +222,6 @@ pub struct EvtUpdateRewardDuration {
     pub new_reward_duration: u64,
 }
 
-#[derive(Debug)]
 #[event]
 pub struct EvtUpdateRewardFunder {
     // Liquidity pool
@@ -302,7 +234,6 @@ pub struct EvtUpdateRewardFunder {
     pub new_funder: Pubkey,
 }
 
-#[derive(Debug)]
 #[event]
 pub struct EvtWithdrawIneligibleReward {
     // Liquidity pool
@@ -313,6 +244,14 @@ pub struct EvtWithdrawIneligibleReward {
     pub amount: u64,
 }
 
+#[event]
+pub struct EvtWithdrawDeadLiquidityReward {
+    pub pool: Pubkey,
+    pub reward_mint: Pubkey,
+    pub amount: u64,
+}
+
+#[deprecated(since = "0.1.8", note = "Use EvtSplitPosition3 instead")]
 #[event]
 pub struct EvtSplitPosition2 {
     pub pool: Pubkey,
@@ -325,6 +264,20 @@ pub struct EvtSplitPosition2 {
     pub first_position_info: SplitPositionInfo,
     pub second_position_info: SplitPositionInfo,
     pub split_position_parameters: SplitPositionParameters2,
+}
+
+#[event]
+pub struct EvtSplitPosition3 {
+    pub pool: Pubkey,
+    pub first_owner: Pubkey,
+    pub second_owner: Pubkey,
+    pub first_position: Pubkey,
+    pub second_position: Pubkey,
+    pub current_sqrt_price: u128,
+    pub amount_splits: SplitAmountInfo2,
+    pub first_position_info: SplitPositionInfo2,
+    pub second_position_info: SplitPositionInfo2,
+    pub split_position_parameters: SplitPositionParameters3,
 }
 
 #[event]
@@ -343,4 +296,11 @@ pub struct EvtLiquidityChange {
     pub token_b_amount_threshold: u64,
     // 0: add, 1: remove
     pub change_type: u8,
+}
+
+#[event]
+pub struct EvtUpdatePoolFees {
+    pub pool: Pubkey,
+    pub operator: Pubkey,
+    pub params: UpdatePoolFeesParameters,
 }

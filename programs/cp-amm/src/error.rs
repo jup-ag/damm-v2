@@ -29,6 +29,7 @@ pub enum PoolError {
     #[msg("Type cast error")]
     TypeCastFailed,
 
+    /// deprecated
     #[msg("Unable to modify activation point")]
     UnableToModifyActivationPoint,
 
@@ -41,9 +42,11 @@ pub enum PoolError {
     #[msg("Invalid activation point")]
     InvalidActivationPoint,
 
+    /// deprecated
     #[msg("Quote token must be SOL,USDC")]
     InvalidQuoteMint,
 
+    /// deprecated
     #[msg("Invalid fee curve")]
     InvalidFeeCurve,
 
@@ -131,6 +134,7 @@ pub enum PoolError {
     #[msg("Invalid config type")]
     InvalidConfigType,
 
+    /// deprecated
     #[msg("Invalid pool creator")]
     InvalidPoolCreator,
 
@@ -156,11 +160,71 @@ pub enum PoolError {
     FailToValidateSingleSwapInstruction,
 
     #[msg("Invalid fee scheduler")]
-    InvalidFeeScheduler,
+    InvalidFeeTimeScheduler,
 
     #[msg("Undetermined error")]
     UndeterminedError,
 
     #[msg("Invalid pool version")]
     InvalidPoolVersion,
+
+    #[msg("Invalid authority to do that action")]
+    InvalidAuthority,
+
+    #[msg("Invalid permission")]
+    InvalidPermission,
+
+    #[msg("Invalid fee market cap scheduler")]
+    InvalidFeeMarketCapScheduler,
+
+    #[msg("Cannot update base fee")]
+    CannotUpdateBaseFee,
+
+    #[msg("Invalid dynamic fee parameters")]
+    InvalidDynamicFeeParameters,
+
+    #[msg("Invalid update pool fees parameters")]
+    InvalidUpdatePoolFeesParameters,
+
+    #[msg("Missing operator account")]
+    MissingOperatorAccount,
+
+    #[msg("Incorrect ATA")]
+    IncorrectATA,
+
+    /// deprecated
+    #[msg("Invalid zap out parameters")]
+    InvalidZapOutParameters,
+
+    /// deprecated
+    #[msg("Invalid withdraw protocol fee zap accounts")]
+    InvalidWithdrawProtocolFeeZapAccounts,
+
+    /// deprecated
+    #[msg("SOL,USDC protocol fee cannot be withdrawn via zap")]
+    MintRestrictedFromZap,
+
+    /// deprecated
+    #[msg("CPI disabled")]
+    CpiDisabled,
+
+    /// deprecated
+    #[msg("Missing zap out instruction")]
+    MissingZapOutInstruction,
+
+    /// deprecated
+    #[msg("Invalid zap accounts")]
+    InvalidZapAccounts,
+
+    #[msg("Invalid compounding fee bps")]
+    InvalidCompoundingFeeBps,
+
+    #[msg("Invalid claim protocol fee accounts")]
+    InvalidClaimProtocolFeeAccounts,
+
+    #[msg("Transfer fee excluded amount is zero")]
+    TransferFeeExcludedAmountIsZero,
+
+    #[msg("Delegated amount is not zero")]
+    DelegatedAmountNonZero,
 }

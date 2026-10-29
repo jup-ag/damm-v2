@@ -1,7 +1,7 @@
 use anchor_lang::prelude::*;
 
 use crate::{
-    constants::{BASIS_POINT_MAX, ONE_Q64},
+    constants::{fee::MAX_BASIS_POINT, ONE_Q64},
     PoolError,
 };
 
@@ -18,10 +18,10 @@ pub fn get_fee_in_period(
     if reduction_factor == 0 {
         return Ok(cliff_fee_numerator);
     }
-    // Make bin_step into Q64x64, and divided by BASIS_POINT_MAX. If bin_step = 1, we get 0.0001 in Q64x64
+    // Make bin_step into Q64x64, and divided by MAX_BASIS_POINT. If bin_step = 1, we get 0.0001 in Q64x64
     let bps = u128::from(reduction_factor)
         .safe_shl(SCALE_OFFSET.into())?
-        .safe_div(BASIS_POINT_MAX.into())?;
+        .safe_div(MAX_BASIS_POINT.into())?;
     let base = ONE_Q64.safe_sub(bps)?;
     let result = pow(base, passed_period.into()).ok_or_else(|| PoolError::MathOverflow)?;
 
@@ -34,6 +34,12 @@ pub fn get_fee_in_period(
 }
 
 pub fn pow(base: u128, exp: i32) -> Option<u128> {
+    // https://doc.rust-lang.org/std/primitive.i32.html#method.abs
+    // The absolute value of i32::MIN cannot be represented as an i32, and attempting to calculate it will cause an overflow.
+    if exp == i32::MIN {
+        return None;
+    }
+
     // If exponent is negative. We will invert the result later by 1 / base^exp.abs()
     let mut invert = exp.is_negative();
 

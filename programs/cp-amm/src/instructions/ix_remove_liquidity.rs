@@ -4,14 +4,15 @@ use anchor_lang::prelude::*;
 use anchor_spl::token_interface::{Mint, TokenAccount, TokenInterface};
 
 use crate::{
+    activation_handler::ActivationHandler,
     const_pda, get_pool_access_validator,
-    state::{ModifyLiquidityResult, Pool, Position},
+    state::{Pool, Position, PositionDelegatePermission},
     token::{calculate_transfer_fee_excluded_amount, transfer_from_pool},
     u128x128_math::Rounding,
-    EvtLiquidityChange, EvtRemoveLiquidity, PoolError,
+    EvtLiquidityChange, PoolError,
 };
 
-#[derive(AnchorSerialize, AnchorDeserialize, Copy, Clone, Debug)]
+#[derive(AnchorSerialize, AnchorDeserialize, Copy, Clone)]
 pub struct RemoveLiquidityParameters {
     /// delta liquidity
     pub liquidity_delta: u128,
@@ -63,12 +64,11 @@ pub struct RemoveLiquidityCtx<'info> {
     #[account(
             constraint = position_nft_account.mint == position.load()?.nft_mint,
             constraint = position_nft_account.amount == 1,
-            token::authority = owner
     )]
     pub position_nft_account: Box<InterfaceAccount<'info, TokenAccount>>,
 
-    /// owner of position
-    pub owner: Signer<'info>,
+    /// Signer
+    pub signer: Signer<'info>,
 
     /// Token a program
     pub token_a_program: Interface<'info, TokenInterface>,
@@ -95,30 +95,66 @@ pub fn handle_remove_liquidity(
     let mut pool = ctx.accounts.pool.load_mut()?;
     let mut position = ctx.accounts.position.load_mut()?;
 
+    position.assert_authority_with_owner_destinations(
+        &ctx.accounts.position_nft_account,
+        &ctx.accounts.signer.key(),
+        PositionDelegatePermission::RemoveLiquidity,
+        PositionDelegatePermission::RemoveLiquidityToOwner,
+        &[
+            (
+                &ctx.accounts.token_a_account.to_account_info(),
+                ctx.accounts.token_a_mint.key(),
+                ctx.accounts.token_a_program.key(),
+            ),
+            (
+                &ctx.accounts.token_b_account.to_account_info(),
+                ctx.accounts.token_b_mint.key(),
+                ctx.accounts.token_b_program.key(),
+            ),
+        ],
+    )?;
+
+    pool.update_layout_version_if_needed()?;
+
+    let current_point = ActivationHandler::get_current_point(pool.activation_type)?;
+    position.refresh_inner_vesting(current_point)?;
+
     let liquidity_delta = liquidity_delta.unwrap_or(position.unlocked_liquidity);
     require!(
         liquidity_delta <= position.unlocked_liquidity && liquidity_delta > 0,
         PoolError::InsufficientLiquidity
     );
 
-    // update current pool reward & postion reward before any logic
+    // update current pool reward & position reward before any logic
     let current_time = Clock::get()?.unix_timestamp as u64;
     position.update_rewards(&mut pool, current_time)?;
 
-    let ModifyLiquidityResult {
-        token_a_amount,
-        token_b_amount,
-    } = pool.get_amounts_for_modify_liquidity(liquidity_delta, Rounding::Down)?;
+    let liquidity_handler = pool.get_liquidity_handler()?;
+    let (token_a_amount, token_b_amount) =
+        liquidity_handler.get_amounts_for_modify_liquidity(liquidity_delta, Rounding::Down)?;
 
     require!(
         token_a_amount > 0 || token_b_amount > 0,
         PoolError::AmountIsZero
     );
 
-    let transfer_fee_excluded_amount_a =
-        calculate_transfer_fee_excluded_amount(&ctx.accounts.token_a_mint, token_a_amount)?.amount;
-    let transfer_fee_excluded_amount_b =
-        calculate_transfer_fee_excluded_amount(&ctx.accounts.token_b_mint, token_b_amount)?.amount;
+    let transfer_fee_excluded_amount_a = calculate_transfer_fee_excluded_amount(
+        &ctx.accounts
+            .token_a_mint
+            .to_account_info()
+            .try_borrow_data()?,
+        token_a_amount,
+    )?
+    .amount;
+
+    let transfer_fee_excluded_amount_b = calculate_transfer_fee_excluded_amount(
+        &ctx.accounts
+            .token_b_mint
+            .to_account_info()
+            .try_borrow_data()?,
+        token_b_amount,
+    )?
+    .amount;
     // Slippage check
     require!(
         transfer_fee_excluded_amount_a >= token_a_amount_threshold,
@@ -129,14 +165,19 @@ pub fn handle_remove_liquidity(
         PoolError::ExceededSlippage
     );
 
-    pool.apply_remove_liquidity(&mut position, liquidity_delta)?;
+    pool.apply_remove_liquidity(
+        &mut position,
+        liquidity_delta,
+        token_a_amount,
+        token_b_amount,
+    )?;
 
     // send to user
     transfer_from_pool(
         ctx.accounts.pool_authority.to_account_info(),
         &ctx.accounts.token_a_mint,
         &ctx.accounts.token_a_vault,
-        &ctx.accounts.token_a_account,
+        &ctx.accounts.token_a_account.to_account_info(),
         &ctx.accounts.token_a_program,
         token_a_amount,
     )?;
@@ -144,30 +185,15 @@ pub fn handle_remove_liquidity(
         ctx.accounts.pool_authority.to_account_info(),
         &ctx.accounts.token_b_mint,
         &ctx.accounts.token_b_vault,
-        &ctx.accounts.token_b_account,
+        &ctx.accounts.token_b_account.to_account_info(),
         &ctx.accounts.token_b_program,
         token_b_amount,
     )?;
 
-    emit_cpi!(EvtRemoveLiquidity {
-        pool: ctx.accounts.pool.key(),
-        owner: ctx.accounts.owner.key(),
-        position: ctx.accounts.position.key(),
-        params: RemoveLiquidityParameters {
-            liquidity_delta,
-            token_a_amount_threshold,
-            token_b_amount_threshold
-        },
-        token_a_amount,
-        token_b_amount,
-    });
-
-    let (reserve_a_amount, reserve_b_amount) = pool.get_reserves_amount()?;
-
     emit_cpi!(EvtLiquidityChange {
         pool: ctx.accounts.pool.key(),
         position: ctx.accounts.position.key(),
-        owner: ctx.accounts.owner.key(),
+        owner: ctx.accounts.position_nft_account.owner,
         liquidity_delta,
         token_a_amount_threshold,
         token_b_amount_threshold,
@@ -175,8 +201,8 @@ pub fn handle_remove_liquidity(
         token_b_amount: transfer_fee_excluded_amount_b,
         transfer_fee_included_token_a_amount: token_a_amount,
         transfer_fee_included_token_b_amount: token_b_amount,
-        reserve_b_amount,
-        reserve_a_amount,
+        reserve_a_amount: pool.token_a_amount,
+        reserve_b_amount: pool.token_b_amount,
         change_type: 1
     });
 

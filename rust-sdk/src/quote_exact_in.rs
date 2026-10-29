@@ -1,8 +1,8 @@
 use crate::utils::*;
-use anyhow::{ensure, Ok, Result};
+use anyhow::{ensure, Error, Ok, Result};
 use cp_amm::{
     params::swap::TradeDirection,
-    state::{fee::FeeMode, Pool, SwapResult2},
+    state::{fee::FeeMode, CollectFeeMode, Pool, SwapResult2},
 };
 
 pub fn get_quote(
@@ -19,18 +19,33 @@ pub fn get_quote(
 
     ensure!(is_swap_enable(pool, current_point)?, "Swap is disabled");
 
+    ensure!(pool.sqrt_price > 0, "sqrt_price is zero");
+    ensure!(pool.liquidity > 0, "liquidity is zero");
+
     let trade_direction = if a_to_b {
         TradeDirection::AtoB
     } else {
         TradeDirection::BtoA
     };
 
-    let fee_mode = &FeeMode::get_fee_mode(pool.collect_fee_mode, trade_direction, has_referral)?;
+    let collect_fee_mode = CollectFeeMode::try_from(pool.collect_fee_mode)
+        .map_err(|_| Error::msg("Invalid collect fee mode"))?;
+    let fee_mode = FeeMode::get_fee_mode(collect_fee_mode, trade_direction, has_referral);
 
-    Ok(pool.get_swap_result_from_exact_input(
+    let mut swap_result = pool.get_swap_result_from_exact_input(
         actual_amount_in,
-        fee_mode,
+        &fee_mode,
         trade_direction,
         current_point,
-    )?)
+    )?;
+
+    swap_result.next_sqrt_price = apply_next_sqrt_price(
+        pool,
+        &swap_result,
+        &fee_mode,
+        trade_direction,
+        collect_fee_mode,
+    )?;
+
+    Ok(swap_result)
 }
